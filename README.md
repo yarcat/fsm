@@ -3,7 +3,16 @@ Golang finite-state machine.
 
 # Examples
 
-TODO: Add examples where we do something upon entering and leaving.
+## Comprehensive
+
+In [this example] we do the following:
+
+* utilize a back-reference to our state maching using `MachineProvider`;
+* use `Expiring` state handler to timeout a state;
+* create custom state handlers that print the states and terminate the app;
+* join the handlers using `Compose`.
+
+[this example]: example_test.go
 
 ## Simple
 
