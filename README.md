@@ -36,8 +36,10 @@ fsm.Send(evInitialized)
 
 ## Expiring states
 
-In this example we use an `Expiring` state, which sends events to the FSM, and
-requires a back-reference.
+In this example we use an `Expiring` state handler, which sends events to the
+FSM with a delay. Since timer events are asynchronous, we recommend to use the
+asynchronous FSM implementation.
+
 
 ```golang
 const (
@@ -59,7 +61,8 @@ states := States{
 	"stMyState": NewExpiring(provider, After(time.Second), evTimeout),
 }
 
-fsm := fsm.New(stInit, transitions, states, nil)
+fsm := fsm.NewAsync(stInit, transitions, states, nil)
 provider.Set(fsm)
 fsm.Send(evInitialized)
+fsm.Run()
 ```
