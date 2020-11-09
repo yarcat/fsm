@@ -14,13 +14,17 @@ type (
 		// Leave is called upon leaving this state.
 		Leave()
 	}
+	// EventSender wraps FSM.Send.
+	EventSender interface{ Send(EventType) }
 	// MachineProvider provides a reference to the FSM. The provider is not
 	// go-routine safe. We recommend to put a machine into an initialization
 	// state and configure it before actually running it. See the Expiring
 	// usage example.
-	MachineProvider struct{ fsm *FSM }
+	MachineProvider struct{ fsm EventSender }
 	// Expiring is a state handler with a timeout. When the state timeout
-	// occurres the event is sent to the FSM.
+	// occurres the event is sent to the FSM. We recommend to use the async
+	// implementation of the state machine, since the timeout is sent
+	// asynchronously.
 	//
 	// The state machine must be provided (using a MachineProvider) before
 	// entering the state.
@@ -42,11 +46,12 @@ type (
 	//	states := States{
 	//		"stMyState": NewExpiring(provider, After(time.Second), evTimeout),
 	//	}
-	//	fsm := fsm.New(stInit, transitions, states, nil)
+	//	fsm := fsm.NewAsync(stInit, transitions, states, nil)
 	//	provider.Set(fsm)
 	//	fsm.Send(evInitialized)
+	//	fsm.Run()
 	Expiring struct {
-		fsm    *MachineProvider
+		fsm    EventSender
 		event  EventType
 		later  AfterFunc
 		cancel func()
@@ -90,7 +95,7 @@ func (defaultHandler) Enter() {}
 func (defaultHandler) Leave() {}
 
 // Set sets the FSM reference.
-func (p *MachineProvider) Set(fsm *FSM) {
+func (p *MachineProvider) Set(fsm EventSender) {
 	p.fsm = fsm
 }
 

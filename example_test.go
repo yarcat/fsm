@@ -35,14 +35,17 @@ func (quitting) Leave() {}
 
 func Example() {
 	p := new(fsm.MachineProvider)
+	stateName := func(st fsm.StateType) string {
+		return fmt.Sprintf("%s (sync)", st)
+	}
 	states := fsm.States{
-		stInit: printing{string(stInit)},
+		stInit: printing{stateName(stInit)},
 		stWaitTimeout: fsm.Compose(
-			printing{string(stWaitTimeout)},
-			fsm.NewExpiring(p, fsm.After(time.Second), evTimeout),
+			printing{stateName(stWaitTimeout)},
+			fsm.NewExpiring(p, fsm.After(100*time.Millisecond), evTimeout),
 		),
 		stFinal: fsm.Compose(
-			printing{string(stFinal)},
+			printing{stateName(stFinal)},
 			quitting{},
 		),
 	}
@@ -52,9 +55,38 @@ func Example() {
 	select {} // Infinite sleep.
 
 	// Output:
-	// ENTER: stInit
-	// LEAVE: stInit
-	// ENTER: stWaitTimeout
-	// LEAVE: stWaitTimeout
-	// ENTER: stFinal
+	// ENTER: stInit (sync)
+	// LEAVE: stInit (sync)
+	// ENTER: stWaitTimeout (sync)
+	// LEAVE: stWaitTimeout (sync)
+	// ENTER: stFinal (sync)
+}
+
+func ExampleNewAsync() {
+	p := new(fsm.MachineProvider)
+	stateName := func(st fsm.StateType) string {
+		return fmt.Sprintf("%s (async)", st)
+	}
+	states := fsm.States{
+		stInit: printing{stateName(stInit)},
+		stWaitTimeout: fsm.Compose(
+			printing{stateName(stWaitTimeout)},
+			fsm.NewExpiring(p, fsm.After(100*time.Millisecond), evTimeout),
+		),
+		stFinal: fsm.Compose(
+			printing{stateName(stFinal)},
+			quitting{},
+		),
+	}
+	fsm := fsm.NewAsync(stInit, transitions, states, nil)
+	p.Set(fsm)
+	fsm.Send(evInitialized)
+	fsm.Run() // Infinite loop.
+
+	// Output:
+	// ENTER: stInit (async)
+	// LEAVE: stInit (async)
+	// ENTER: stWaitTimeout (async)
+	// LEAVE: stWaitTimeout (async)
+	// ENTER: stFinal (async)
 }
