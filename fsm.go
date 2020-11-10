@@ -15,9 +15,9 @@ type (
 	}
 	// AsyncFSM is an asynchronous version of FSM. It is go-routine safe.
 	AsyncFSM struct {
-		fsm   *FSM
-		queue chan EventType
-		done  chan struct{}
+		fsm           *FSM
+		queue         chan []EventType
+		done, updated chan struct{}
 	}
 )
 
@@ -40,10 +40,13 @@ func New(startState StateType, transitions Transitions, states States, defaultHa
 // NewAsync returns new configured asynchronous finite-state machine.
 func NewAsync(startState StateType, transitions Transitions, states States, defaultHandler State) *AsyncFSM {
 	fsm := New(startState, transitions, states, defaultHandler)
+	queue := make(chan []EventType, 1)
+	queue <- nil
 	return &AsyncFSM{
-		fsm:   fsm,
-		done:  make(chan struct{}, 1), // To allow evInitialized.
-		queue: make(chan EventType),
+		fsm:     fsm,
+		done:    make(chan struct{}),
+		queue:   queue,
+		updated: make(chan struct{}, 1),
 	}
 }
 
@@ -80,12 +83,16 @@ func (fsm *FSM) handler(state StateType) State {
 // Send sends the event to the state machine asynchronously. The state machine
 // changes its state accordingly to the transition table.
 func (fsm *AsyncFSM) Send(e EventType) {
-	go func() {
-		select {
-		case <-fsm.done:
-		case fsm.queue <- e:
-		}
-	}()
+	select {
+	case <-fsm.done:
+		return
+	case q := <-fsm.queue:
+		fsm.queue <- append(q, e)
+	}
+	select { // Non-blocking notify.
+	case fsm.updated <- struct{}{}:
+	default:
+	}
 }
 
 // Run processes the event queue in a loop.
@@ -94,8 +101,12 @@ func (fsm *AsyncFSM) Run() {
 		select {
 		case <-fsm.done:
 			break
-		case e := <-fsm.queue:
-			fsm.fsm.Send(e)
+		case <-fsm.updated:
+			q := <-fsm.queue
+			fsm.queue <- nil
+			for _, e := range q {
+				fsm.fsm.Send(e)
+			}
 		}
 	}
 }
