@@ -58,7 +58,7 @@ transitions := Transitions{
 provider := new(MachineProvider)
 
 states := States{
-	"stMyState": NewExpiring(provider, After(time.Second), evTimeout),
+	stWaitTimeout: NewExpiring(provider, After(time.Second), evTimeout),
 }
 
 fsm := fsm.NewAsync(stInit, transitions, states, nil)
