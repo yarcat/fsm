@@ -100,7 +100,7 @@ func (fsm *AsyncFSM) Run() {
 	for {
 		select {
 		case <-fsm.done:
-			break
+			return
 		case <-fsm.updated:
 			q := <-fsm.queue
 			fsm.queue <- nil
