@@ -19,15 +19,15 @@ In [this example] we do the following:
 In this example we start with `stInit`, and then send `evInitialized`, which
 switches the state into `stFinal`.
 
-```
+```go
 const (
-	stInit         StateType = "stInit"
-	stFinal        StateType = "stFinal"
-	evInitialized  EventType = "evInitialized"
+	stInit        fsm.StateType = "stInit"
+	stFinal       fsm.StateType = "stFinal"
+	evInitialized fsm.EventType = "evInitialized"
 )
 
-transitions := Transitions{
-	When(stInit, evInitialized): stFinal,
+transitions := fsm.Transitions{
+	fsm.When(stInit, evInitialized): stFinal,
 }
 
 fsm := fsm.New(stInit, transitions, nil, nil)
