@@ -69,6 +69,7 @@ func ExampleNewAsync() {
 	stateName := func(st fsm.StateType) string {
 		return fmt.Sprintf("%s (async)", st)
 	}
+	var afsm *fsm.AsyncFSM
 	states := fsm.States{
 		stInit: printing{stateName(stInit)},
 		stWaitTimeout: fsm.Compose(
@@ -77,13 +78,13 @@ func ExampleNewAsync() {
 		),
 		stFinal: fsm.Compose(
 			printing{stateName(stFinal)},
-			caller{},
+			caller{func() { afsm.Stop() }},
 		),
 	}
-	fsm := fsm.NewAsync(stInit, transitions, states, nil)
-	p.Set(fsm)
-	fsm.Send(evInitialized)
-	fsm.Run() // Infinite loop.
+	afsm = fsm.NewAsync(stInit, transitions, states, nil)
+	p.Set(afsm)
+	afsm.Send(evInitialized)
+	afsm.Run() // Stops after afsm.Stop() is called.
 
 	// Output:
 	// ENTER: stInit (async)
