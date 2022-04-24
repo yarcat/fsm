@@ -2,10 +2,16 @@ package fsm_test
 
 import (
 	"fmt"
+	"log"
+	"math/rand"
 	"time"
 
 	"github.com/yarcat/fsm-go"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixMicro())
+}
 
 const (
 	stInit        fsm.StateType = "stInit"
@@ -75,6 +81,41 @@ func ExampleNewAsync() {
 		stWaitTimeout: fsm.Compose(
 			printing{stateName(stWaitTimeout)},
 			fsm.NewExpiring(p, fsm.After(100*time.Millisecond), evTimeout),
+		),
+		stFinal: fsm.Compose(
+			printing{stateName(stFinal)},
+			caller{func() { afsm.Stop() }},
+		),
+	}
+	afsm = fsm.NewAsync(stInit, transitions, states, nil)
+	p.Set(afsm)
+	afsm.Send(evInitialized)
+	afsm.Run() // Stops after afsm.Stop() is called.
+
+	// Output:
+	// ENTER: stInit (async)
+	// LEAVE: stInit (async)
+	// ENTER: stWaitTimeout (async)
+	// LEAVE: stWaitTimeout (async)
+	// ENTER: stFinal (async)
+}
+
+func ExampleLazyAfter() {
+	p := new(fsm.MachineProvider)
+	stateName := func(st fsm.StateType) string {
+		return fmt.Sprintf("%s (async)", st)
+	}
+	var afsm *fsm.AsyncFSM
+	expireAfter := fsm.LazyAfter(func() time.Duration {
+		d := time.Second + time.Millisecond*time.Duration(rand.Intn(1000))
+		log.Println("set expiration to", d)
+		return d
+	})
+	states := fsm.States{
+		stInit: printing{stateName(stInit)},
+		stWaitTimeout: fsm.Compose(
+			printing{stateName(stWaitTimeout)},
+			fsm.NewExpiring(p, expireAfter, evTimeout),
 		),
 		stFinal: fsm.Compose(
 			printing{stateName(stFinal)},
