@@ -115,6 +115,31 @@ func After(d time.Duration) AfterFunc {
 	}
 }
 
+// LazyAfter returns a scheduler configured with the duration returned by the
+// duration provider function d.
+//
+// This function exists to provide different intervals for the expiring states.
+//
+// In the following example we create a state configured with random expiration
+// interval upon entering the state:
+//
+//	const (
+//		stWaitTimeout fsm.State = "stWaitTimeout"
+//		evTimeout     fsm.Event = "evTimeout"
+//	)
+//	expireAfter := fsm.LazyAfter(func() time.Duration {
+//		return 5*time.Second + time.Duration(rand.Intn(5))*time.Second
+//	})
+//	states := fsm.States{
+//		stWaitTimeout: NewExpiring(provider, expireAfter, evTimeout),
+//	}
+func LazyAfter(d func() time.Duration) AfterFunc {
+	return func(f func()) (cancel func()) {
+		timer := time.AfterFunc(d(), f)
+		return func() { timer.Stop() }
+	}
+}
+
 // NewExpiring returns the state handler which send the event to the state
 // machine after some time interval.
 func NewExpiring(p *MachineProvider, after AfterFunc, e EventType) *Expiring {
