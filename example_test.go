@@ -2,7 +2,6 @@ package fsm_test
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/yarcat/fsm-go"
@@ -24,16 +23,18 @@ var transitions = fsm.Transitions{
 
 type (
 	printing struct{ name string }
-	quitting struct{}
+	caller   struct{ f func() }
 )
 
 func (st printing) Enter() { fmt.Println("ENTER:", st.name) }
 func (st printing) Leave() { fmt.Println("LEAVE:", st.name) }
 
-func (quitting) Enter() { os.Exit(0) }
-func (quitting) Leave() {}
+func (c caller) Enter() { c.f() }
+func (c caller) Leave() {}
 
 func Example() {
+	done := make(chan struct{})
+
 	p := new(fsm.MachineProvider)
 	stateName := func(st fsm.StateType) string {
 		return fmt.Sprintf("%s (sync)", st)
@@ -46,13 +47,14 @@ func Example() {
 		),
 		stFinal: fsm.Compose(
 			printing{stateName(stFinal)},
-			quitting{},
+			caller{func() { close(done) }},
 		),
 	}
 	fsm := fsm.New(stInit, transitions, states, nil)
 	p.Set(fsm)
 	fsm.Send(evInitialized)
-	select {} // Infinite sleep.
+
+	<-done
 
 	// Output:
 	// ENTER: stInit (sync)
@@ -75,7 +77,7 @@ func ExampleNewAsync() {
 		),
 		stFinal: fsm.Compose(
 			printing{stateName(stFinal)},
-			quitting{},
+			caller{},
 		),
 	}
 	fsm := fsm.NewAsync(stInit, transitions, states, nil)
